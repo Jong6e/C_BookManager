@@ -6,8 +6,34 @@
 #include "user_menu.h"
 #include "book_menu.h"
 #include "common_input.h"
+#include "book.h"
 
 #define BUF_SIZE 1000
+
+// 프로그램 종료 함수
+// 모든 자원을 정리하고 프로그램을 안전하게 종료
+void exitProgram(SOCKET sock) {
+    printf("[알림] 프로그램을 종료합니다.\n");
+    printf("[알림] 자원 정리 중...\n");
+    
+    // 도서 메모리 해제
+    freeAllBooks();
+    
+    // 소켓 연결 종료
+    if (sock != INVALID_SOCKET) {
+        closesocket(sock);
+        printf("[알림] 서버 연결 종료\n");
+    }
+    
+    // Winsock 정리
+    WSACleanup();
+    printf("[알림] 네트워크 자원 정리 완료\n");
+    
+    Sleep(1000); // 1초 대기
+    
+    // 프로그램 종료
+    exit(0);
+}
 
 void userMenu(SOCKET sock)
 {
@@ -33,9 +59,7 @@ void userMenu(SOCKET sock)
 
         if (option == 0)
         {
-            printf("[알림] 프로그램을 종료합니다.\n");
-            Sleep(1000); // 1초 대기
-            exit(0); // 프로그램 종료
+            exitProgram(sock); // 안전한 종료 함수 호출
         }
         if (option < 1 || option > 5)
             continue;

@@ -6,6 +6,7 @@
 #include <conio.h>
 #include "book_menu.h"
 #include "common_input.h"
+#include "user_menu.h"
 
 #define BUF_SIZE 65536 // 버퍼 크기를 64KB로 크게 증가
 
@@ -30,6 +31,7 @@ void bookMenu(SOCKET sock)
         printf("3. 도서 삭제\n");
         printf("4. 도서 수정\n");
         printf("5. 도서 정렬\n");
+        printf("6. 도서 평점 랭킹\n");
         printf("=====================================================\n");
         printStatusBar();
         printf(">> 선택: ");
@@ -43,9 +45,7 @@ void bookMenu(SOCKET sock)
 
         if (sel == 0)
         {
-            printf("[알림] 프로그램을 종료합니다.\n");
-            Sleep(1000); // 1초 대기 후 종료
-            exit(0);     // 프로그램 종료
+            exitProgram(sock); // 안전한 종료 함수 호출
         }
 
         if (sel == 1)
@@ -231,8 +231,11 @@ void bookMenu(SOCKET sock)
             printf(" ID |  제목                                                        | 저자                             | 평점\n");
             printf("──────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n");
             printf("%s\n", buffer);
-            if (strncmp(buffer, "[오류]", 9) == 0)
+            
+            // 오류 메시지 검사를 더 정확하게 수정
+            if (strstr(buffer, "[오류]") != NULL || strstr(buffer, "찾을 수 없습니다") != NULL)
             {
+                printf("[알림] 유효하지 않은 도서 ID입니다.\n");
                 printf("(Enter를 누르면 메뉴로 돌아갑니다...)\n");
                 getchar();
                 continue;
@@ -283,13 +286,13 @@ void bookMenu(SOCKET sock)
                                                                             : "rating";
 
             // 정렬 방식 선택
-            getEscapableInput(orderStr, sizeof(orderStr), "정렬 방식 선택\n1. 오름차순\n2. 내림차순", 0);
+            getEscapableInput(orderStr, sizeof(orderStr), "정렬 방식 선택\n1. 내림차순\n2. 오름차순", 0);
             if (orderStr[0] == '\0')
                 continue;
             orderSel = atoi(orderStr);
             if (orderSel != 1 && orderSel != 2)
                 continue;
-            const char *order = (orderSel == 1) ? "asc" : "desc";
+            const char *order = (orderSel == 1) ? "desc" : "asc";
 
             // 서버에 명령 전송
             snprintf(buffer, sizeof(buffer), "SORT:%s:%s", field, order);
@@ -413,6 +416,94 @@ void bookMenu(SOCKET sock)
             {
                 free(lines[i]);
             }
+        }
+
+        if (sel == 6)
+        {
+            snprintf(buffer, sizeof(buffer), "RANK");
+            send(sock, buffer, strlen(buffer), 0);
+
+            memset(buffer, 0, BUF_SIZE);
+            int totalBytes = 0;
+            int bytes;
+
+            do
+            {
+                bytes = recv(sock, buffer + totalBytes, BUF_SIZE - totalBytes - 1, 0);
+                if (bytes > 0)
+                {
+                    totalBytes += bytes;
+                    buffer[totalBytes] = '\0';
+                }
+            } while (bytes > 0 && totalBytes < BUF_SIZE - 1 && bytes == 4096);
+
+            char *lines[1000];
+            int lineCount = 0;
+            char *start = buffer;
+            char *end;
+
+            while ((end = strchr(start, '\n')) != NULL && lineCount < 1000)
+            {
+                int len = end - start;
+                if (len > 0)
+                {
+                    lines[lineCount] = (char *)malloc(len + 1);
+                    if (lines[lineCount])
+                    {
+                        strncpy(lines[lineCount], start, len);
+                        lines[lineCount][len] = '\0';
+                        lineCount++;
+                    }
+                }
+                start = end + 1;
+            }
+            if (*start != '\0' && lineCount < 1000)
+            {
+                lines[lineCount] = strdup(start);
+                if (lines[lineCount])
+                    lineCount++;
+            }
+
+            int currentPage = 0;
+            int itemsPerPage = 10;
+            int totalPages = (lineCount + itemsPerPage - 1) / itemsPerPage;
+            if (totalPages == 0)
+                totalPages = 1;
+
+            while (1)
+            {
+                clearScreen();
+                printf("[도서 평점 랭킹]\n", currentPage + 1, totalPages);
+                printf(" ID |  제목                                                        | 저자                             | 평점\n");
+                printf("──────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n");
+
+                int startIdx = currentPage * itemsPerPage;
+                int endIdx = startIdx + itemsPerPage;
+                if (endIdx > lineCount)
+                    endIdx = lineCount;
+
+                for (int i = startIdx; i < endIdx; i++)
+                {
+                    printf("%s\n", lines[i]);
+                }
+
+                printf("\n[페이지: %d/%d] [←: 이전]  [→: 다음]  [ESC: 돌아가기]\n", currentPage + 1, totalPages);
+
+                int ch = getch();
+                if (ch == 27)
+                    break;
+                if (ch == 0 || ch == 224)
+                {
+                    ch = getch();
+                    if (ch == 75 && currentPage > 0)
+                        currentPage--;
+                    else if (ch == 77 && currentPage < totalPages - 1)
+                        currentPage++;
+                }
+            }
+
+            for (int i = 0; i < lineCount; i++)
+                free(lines[i]);
         }
     }
 }

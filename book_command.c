@@ -3,8 +3,11 @@
 #include <stdlib.h>
 #include "book.h"
 
-#define REPLY_SIZE 65536  // 응답 버퍼 크기를 클라이언트 버퍼와 동일하게 설정
+// 응답 버퍼 크기 정의
+#define REPLY_SIZE 65536 // 최대 64KB 응답 크기
 
+// 도서 관련 명령어 처리 함수
+// 클라이언트로부터 받은 요청을 분석하고 적절한 도서 관리 기능 실행
 void handleBookCommand(const char *request, char *reply)
 {
     char buffer[1000];
@@ -29,8 +32,8 @@ void handleBookCommand(const char *request, char *reply)
         int maxId = 0;
         for (int i = 0; i < bookCount; i++)
         {
-            if (books[i].id > maxId)
-                maxId = books[i].id;
+            if (books[i]->id > maxId)
+                maxId = books[i]->id;
         }
 
         if (bookCount >= MAX_BOOKS)
@@ -39,10 +42,14 @@ void handleBookCommand(const char *request, char *reply)
         }
         else
         {
-            books[bookCount].id = maxId + 1;
-            strncpy(books[bookCount].title, title, sizeof(books[bookCount].title));
-            strncpy(books[bookCount].author, author, sizeof(books[bookCount].author));
-            books[bookCount].rating = rating;
+            // 동적 할당으로 새 도서 생성
+            books[bookCount] = createNewBook(maxId + 1, title, author, rating);
+            
+            if (!books[bookCount]) {
+                strncpy(reply, "[오류] 메모리 할당 실패", REPLY_SIZE);
+                return;
+            }
+            
             bookCount++;
 
             FILE *fp = fopen("booklist2.txt", "w");
@@ -54,7 +61,7 @@ void handleBookCommand(const char *request, char *reply)
             {
                 for (int i = 0; i < bookCount; i++)
                 {
-                    fprintf(fp, "%d\t%s\t%s\t%.2f\n", books[i].id, books[i].title, books[i].author, books[i].rating);
+                    fprintf(fp, "%d\t%s\t%s\t%.2f\n", books[i]->id, books[i]->title, books[i]->author, books[i]->rating);
                 }
                 fclose(fp);
                 strncpy(reply, "도서 추가 완료.", REPLY_SIZE);
@@ -66,23 +73,45 @@ void handleBookCommand(const char *request, char *reply)
         char *idStr = strtok(NULL, "\n");
         int delId = atoi(idStr);
         int found = 0;
+        int delIndex = -1;
 
+        // 디버깅 메시지 추가
+        printf("[서버] 삭제 요청 ID: %d (현재 도서 수: %d)\n", delId, bookCount);
+
+        // ID 검색
         for (int i = 0; i < bookCount; i++)
         {
-            if (books[i].id == delId)
+            if (books[i] && books[i]->id == delId)
             {
-                for (int j = i; j < bookCount - 1; j++)
-                {
-                    books[j] = books[j + 1];
-                }
-                bookCount--;
+                delIndex = i;
                 found = 1;
+                printf("[서버] 삭제할 도서 찾음: [%d] %s\n", delId, books[i]->title);
                 break;
             }
         }
 
-        if (found)
+        if (found && delIndex >= 0 && delIndex < bookCount)
         {
+            // 메모리 해제 전 NULL 확인
+            if (books[delIndex] == NULL) {
+                strncpy(reply, "[오류] 도서 데이터가 손상되었습니다.", REPLY_SIZE);
+                return;
+            }
+            
+            // 메모리 해제
+            free(books[delIndex]);
+            printf("[서버] 도서 메모리 해제 완료\n");
+            
+            // 배열 재정렬
+            for (int j = delIndex; j < bookCount - 1; j++)
+            {
+                books[j] = books[j + 1];
+            }
+            
+            books[bookCount - 1] = NULL; // 마지막 포인터는 NULL로 설정
+            bookCount--;
+            printf("[서버] 배열 재정렬 완료, 남은 도서 수: %d\n", bookCount);
+            
             FILE *fp = fopen("booklist2.txt", "w");
             if (!fp)
             {
@@ -92,14 +121,18 @@ void handleBookCommand(const char *request, char *reply)
             {
                 for (int i = 0; i < bookCount; i++)
                 {
-                    fprintf(fp, "%d\t%s\t%s\t%.2f\n", books[i].id, books[i].title, books[i].author, books[i].rating);
+                    if (books[i]) { // NULL 확인 추가
+                        fprintf(fp, "%d\t%s\t%s\t%.2f\n", books[i]->id, books[i]->title, books[i]->author, books[i]->rating);
+                    }
                 }
                 fclose(fp);
                 strncpy(reply, "도서 삭제 완료.", REPLY_SIZE);
+                printf("[서버] 도서 파일 저장 완료\n");
             }
         }
         else
         {
+            printf("[서버] 삭제할 도서를 찾지 못함. ID: %d\n", delId);
             strncpy(reply, "[오류] 해당 ID의 도서를 찾을 수 없습니다.", REPLY_SIZE);
         }
     }
@@ -113,14 +146,14 @@ void handleBookCommand(const char *request, char *reply)
 
         for (int i = 0; i < bookCount; i++)
         {
-            if (books[i].id == targetId)
+            if (books[i]->id == targetId)
             {
                 if (strcmp(field, "title") == 0)
-                    strncpy(books[i].title, newValue, sizeof(books[i].title));
+                    strncpy(books[i]->title, newValue, sizeof(books[i]->title) - 1);
                 else if (strcmp(field, "author") == 0)
-                    strncpy(books[i].author, newValue, sizeof(books[i].author));
+                    strncpy(books[i]->author, newValue, sizeof(books[i]->author) - 1);
                 else if (strcmp(field, "rating") == 0)
-                    books[i].rating = atof(newValue);
+                    books[i]->rating = atof(newValue);
 
                 found = 1;
                 break;
@@ -138,7 +171,7 @@ void handleBookCommand(const char *request, char *reply)
             {
                 for (int i = 0; i < bookCount; i++)
                 {
-                    fprintf(fp, "%d\t%s\t%s\t%.2f\n", books[i].id, books[i].title, books[i].author, books[i].rating);
+                    fprintf(fp, "%d\t%s\t%s\t%.2f\n", books[i]->id, books[i]->title, books[i]->author, books[i]->rating);
                 }
                 fclose(fp);
                 strncpy(reply, "도서 정보 수정 완료.", REPLY_SIZE);
@@ -157,10 +190,10 @@ void handleBookCommand(const char *request, char *reply)
 
         for (int i = 0; i < bookCount; i++)
         {
-            if (books[i].id == findId)
+            if (books[i]->id == findId)
             {
                 snprintf(reply, REPLY_SIZE, "%3d | %-60.60s | %-32.32s | 평점: %.2f",
-                         books[i].id, books[i].title, books[i].author, books[i].rating);
+                         books[i]->id, books[i]->title, books[i]->author, books[i]->rating);
                 found = 1;
                 break;
             }
@@ -182,12 +215,13 @@ void handleBookCommand(const char *request, char *reply)
         }
         else
         {
-            // 서버 로그에만 출력하고 응답에는 포함시키지 않음
-            printf("[서버] 정렬 시작: 총 도서 수: %d\n", bookCount);
-            
-            // 정렬 결과만 응답에 포함
             sortBooks(field, order, reply, REPLY_SIZE);
         }
+    }
+    else if (strcmp(cmd, "RANK") == 0)
+    {
+        // 평점 기준 내림차순 정렬
+        sortBooks("rating", "desc", reply, REPLY_SIZE);
     }
     else
     {
