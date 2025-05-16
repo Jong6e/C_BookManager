@@ -106,8 +106,6 @@ void loadBooksFromFile(const char *filename) {
         // 동적 할당으로 도서 생성 및 배열에 저장
         books[bookCount] = createNewBook(id, title, author, rating);
         if (books[bookCount]) {
-            printf("[서버] 도서 로드 #%d: [%d] %s - %s (%.2f)\n", 
-                   bookCount + 1, id, title, author, rating);
             bookCount++;
         }
         else {
