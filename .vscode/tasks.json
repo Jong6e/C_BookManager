@@ -5,7 +5,7 @@
     "echoCommand": true,
     "tasks": [
         {
-            "label": "compile C",
+            "label": "compile C (bmclient)",
             "command": "gcc",
             "args": [
                 "-std=c23",
@@ -13,12 +13,10 @@
                 "${workspaceFolder}/book.c",
                 "${workspaceFolder}/user.c",
                 "-o",
-                "${workspaceFolder}/bmclient"
+                "${workspaceFolder}/bmclient",
+                "-lws2_32"
             ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "group": "build",
             "problemMatcher": {
                 "fileLocation": [
                     "relative",
@@ -35,7 +33,38 @@
             }
         },
         {
-            "label": "run C",
+            "label": "compile C (bmclient)",
+            "command": "gcc",
+            "args": [
+                "-std=c23",
+                "${workspaceFolder}/bmclient.c",
+                "${workspaceFolder}/user_menu.c",
+                "${workspaceFolder}/book_menu.c",
+                "${workspaceFolder}/book.c",
+                "${workspaceFolder}/user.c",
+                "${workspaceFolder}/common_input.c",
+                "-o",
+                "${workspaceFolder}/bmclient",
+                "-lws2_32"
+            ],
+            "group": "build",
+            "problemMatcher": {
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        },
+        {
+            "label": "run C (bmclient)",
             "type": "shell",
             "windows": {
                 "command": "cmd",
@@ -47,16 +76,62 @@
                     "chcp 65001 > nul && ${workspaceFolder}\\bmclient"
                 ]
             },
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
+            "group": "test",
             "presentation": {
                 "reveal": "always",
                 "panel": "shared",
-                "focus": true,
-                "echo": true,
-                "clear": false
+                "focus": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "compile C (bmserver)",
+            "command": "gcc",
+            "args": [
+                "-std=c23",
+                "${workspaceFolder}/bmserver.c",
+                "${workspaceFolder}/user.c",
+                "${workspaceFolder}/book.c",
+                "-o",
+                "${workspaceFolder}/bmserver",
+                "-lws2_32"
+            ],
+            "group": "build",
+            "problemMatcher": {
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        },
+        {
+            "label": "run C (bmserver)",
+            "type": "shell",
+            "windows": {
+                "command": "cmd",
+                "args": [
+                    "/C",
+                    "start",
+                    "cmd",
+                    "/K",
+                    "chcp 65001 > nul && ${workspaceFolder}\\bmserver"
+                ]
+            },
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": true
             },
             "options": {
                 "cwd": "${workspaceFolder}"
