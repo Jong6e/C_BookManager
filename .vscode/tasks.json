@@ -9,9 +9,11 @@
             "command": "gcc",
             "args": [
                 "-std=c23",
-                "${workspaceFolder}/main.c",
+                "${workspaceFolder}/bmclient.c",
+                "${workspaceFolder}/book.c",
+                "${workspaceFolder}/user.c",
                 "-o",
-                "${workspaceFolder}/main"
+                "${workspaceFolder}/bmclient"
             ],
             "group": {
                 "kind": "build",
@@ -42,7 +44,7 @@
                     "start",
                     "cmd",
                     "/K",
-                    "chcp 65001 > nul && ${workspaceFolder}\\main"
+                    "chcp 65001 > nul && ${workspaceFolder}\\bmclient"
                 ]
             },
             "group": {
