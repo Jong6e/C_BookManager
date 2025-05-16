@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/Noah/Documents/CBM",
-      "program": "c:/Users/Noah/Documents/CBM/build/Debug/outDebug",
+      "cwd": "c:/Users/Noah/Documents/CPBM",
+      "program": "c:/Users/Noah/Documents/CPBM/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
