@@ -21,5 +21,6 @@ void loadBooksFromFile(const char *filename);                                   
 void printAllBooks();                                                                   // 전체 도서 목록 출력
 void printTitle();                                                                      // 타이틀 출력 (UI용)
 void searchBooks(const char *field, const char *keyword, char *result, int resultSize); // 도서 검색
+void sortBooks(const char *field, const char *order, char *result, int resultSize);      // 도서 정렬
 
 #endif

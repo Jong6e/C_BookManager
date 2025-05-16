@@ -5,15 +5,16 @@
 #include <ws2tcpip.h>
 #include "user.h"
 #include "book.h"
+#include "user_command.h"
+#include "book_command.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
 #define PORT 12345
-#define BUF_SIZE 1000
+#define BUF_SIZE 65536
 
 int main()
 {
-    SetConsoleOutputCP(CP_UTF8);
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
     {
@@ -23,7 +24,9 @@ int main()
 
     loadUsersFromFile("users.txt");
     loadBooksFromFile("booklist2.txt");
-
+    
+    printf("[서버] 총 %d권의 도서 데이터 로드 완료\n", bookCount);
+    
     SOCKET server_fd = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in serv_addr = {0}, cli_addr = {0};
     int cli_len = sizeof(cli_addr);
@@ -49,202 +52,35 @@ int main()
 
         printf("[서버] 수신된 명령: %s\n", buffer);
 
-        char *cmd = strtok(buffer, ":");
-        const char *result = "";
         char reply[BUF_SIZE] = {0};
 
-        if (strcmp(cmd, "LOGIN") == 0)
+        if (strncmp(buffer, "LOGIN", 5) == 0 || strncmp(buffer, "REGISTER", 8) == 0 ||
+            strncmp(buffer, "DELETE", 6) == 0 || strncmp(buffer, "FIND", 4) == 0 ||
+            strncmp(buffer, "MODIFY", 6) == 0)
         {
-            char *id = strtok(NULL, ":");
-            char *pw = strtok(NULL, "\n");
-            result = checkLogin(id, pw) ? "로그인 성공." : "ID 또는 비밀번호가 잘못되었습니다.";
-            strncpy(reply, result, sizeof(reply));
+            handleUserCommand(buffer, reply);
         }
-        else if (strcmp(cmd, "REGISTER") == 0)
+        else if (strncmp(buffer, "SEARCH", 6) == 0 || strncmp(buffer, "ADD", 3) == 0 ||
+                 strncmp(buffer, "DELETE_BOOK", 11) == 0 || strncmp(buffer, "UPDATE", 6) == 0 ||
+                 strncmp(buffer, "FIND_BOOK", 9) == 0 || strncmp(buffer, "SORT", 4) == 0)
         {
-            char *id = strtok(NULL, ":");
-            char *pw = strtok(NULL, "\n");
-            result = registerUser(id, pw) ? "회원가입 완료." : "이미 존재하는 ID입니다.";
-            strncpy(reply, result, sizeof(reply));
-        }
-        else if (strcmp(cmd, "DELETE") == 0)
-        {
-            char *id = strtok(NULL, ":");
-            char *pw = strtok(NULL, "\n");
-            result = deleteUser(id, pw) ? "삭제 완료." : "비밀번호가 일치하지 않거나 사용자 없음.";
-            strncpy(reply, result, sizeof(reply));
-        }
-        else if (strcmp(cmd, "FIND") == 0)
-        {
-            char *id = strtok(NULL, "\n");
-            result = findUserIndex(id) != -1 ? "사용자가 존재합니다." : "존재하지 않는 사용자입니다.";
-            strncpy(reply, result, sizeof(reply));
-        }
-        else if (strcmp(cmd, "MODIFY") == 0)
-        {
-            char *id = strtok(NULL, ":");
-            char *oldpw = strtok(NULL, ":");
-            char *newpw = strtok(NULL, "\n");
-            result = modifyUser(id, oldpw, newpw) ? "비밀번호 변경 완료." : "기존 비밀번호 불일치 또는 사용자 없음.";
-            strncpy(reply, result, sizeof(reply));
-        }
-        else if (strcmp(cmd, "SEARCH") == 0)
-        {
-            char *field = strtok(NULL, ":");
-            char *keyword = strtok(NULL, "\n");
-            searchBooks(field, keyword, reply, sizeof(reply));
-        }
-        else if (strcmp(cmd, "ADD") == 0)
-        {
-            char *title = strtok(NULL, ":");
-            char *author = strtok(NULL, ":");
-            char *ratingStr = strtok(NULL, "\n");
-            float rating = atof(ratingStr);
-            int maxId = 0;
-            for (int i = 0; i < bookCount; i++)
-            {
-                if (books[i].id > maxId)
-                    maxId = books[i].id;
-            }
-            if (bookCount >= MAX_BOOKS)
-            {
-                strncpy(reply, "[오류] 최대 도서 수를 초과했습니다.", sizeof(reply));
-            }
-            else
-            {
-                books[bookCount].id = maxId + 1;
-                strncpy(books[bookCount].title, title, sizeof(books[bookCount].title));
-                strncpy(books[bookCount].author, author, sizeof(books[bookCount].author));
-                books[bookCount].rating = rating;
-                bookCount++;
-                FILE *fp = fopen("booklist2.txt", "w");
-                if (!fp)
-                {
-                    strncpy(reply, "[오류] 파일 저장 실패", sizeof(reply));
-                }
-                else
-                {
-                    for (int i = 0; i < bookCount; i++)
-                    {
-                        fprintf(fp, "%d\t%s\t%s\t%.2f\n", books[i].id, books[i].title, books[i].author, books[i].rating);
-                    }
-                    fclose(fp);
-                    strncpy(reply, "도서 추가 완료.", sizeof(reply));
-                }
+            handleBookCommand(buffer, reply);
+            
+            if (strncmp(buffer, "SORT", 4) == 0) {
+                printf("[서버] 정렬 명령 처리, 응답 크기: %zu 바이트\n", strlen(reply));
             }
         }
-        else if (strcmp(cmd, "DELETE_BOOK") == 0)
+        else
         {
-            char *idStr = strtok(NULL, "\n");
-            int delId = atoi(idStr);
-            int found = 0;
-            for (int i = 0; i < bookCount; i++)
-            {
-                if (books[i].id == delId)
-                {
-                    for (int j = i; j < bookCount - 1; j++)
-                    {
-                        books[j] = books[j + 1];
-                    }
-                    bookCount--;
-                    found = 1;
-                    break;
-                }
-            }
-            if (found)
-            {
-                FILE *fp = fopen("booklist2.txt", "w");
-                if (!fp)
-                {
-                    strncpy(reply, "[오류] 파일 저장 실패", sizeof(reply));
-                }
-                else
-                {
-                    for (int i = 0; i < bookCount; i++)
-                    {
-                        fprintf(fp, "%d\t%s\t%s\t%.2f\n", books[i].id, books[i].title, books[i].author, books[i].rating);
-                    }
-                    fclose(fp);
-                    strncpy(reply, "도서 삭제 완료.", sizeof(reply));
-                }
-            }
-            else
-            {
-                strncpy(reply, "[오류] 해당 ID의 도서를 찾을 수 없습니다.", sizeof(reply));
-            }
-        }
-        else if (strcmp(cmd, "UPDATE") == 0)
-        {
-            char *idStr = strtok(NULL, ":");
-            char *field = strtok(NULL, ":");
-            char *newValue = strtok(NULL, "\n");
-            int targetId = atoi(idStr);
-            int found = 0;
-            for (int i = 0; i < bookCount; i++)
-            {
-                if (books[i].id == targetId)
-                {
-                    if (strcmp(field, "title") == 0)
-                    {
-                        strncpy(books[i].title, newValue, sizeof(books[i].title));
-                    }
-                    else if (strcmp(field, "author") == 0)
-                    {
-                        strncpy(books[i].author, newValue, sizeof(books[i].author));
-                    }
-                    else if (strcmp(field, "rating") == 0)
-                    {
-                        books[i].rating = atof(newValue);
-                    }
-                    found = 1;
-                    break;
-                }
-            }
-            if (found)
-            {
-                FILE *fp = fopen("booklist2.txt", "w");
-                if (!fp)
-                {
-                    strncpy(reply, "[오류] 파일 저장 실패", sizeof(reply));
-                }
-                else
-                {
-                    for (int i = 0; i < bookCount; i++)
-                    {
-                        fprintf(fp, "%d\t%s\t%s\t%.2f\n", books[i].id, books[i].title, books[i].author, books[i].rating);
-                    }
-                    fclose(fp);
-                    strncpy(reply, "도서 정보 수정 완료.", sizeof(reply));
-                }
-            }
-            else
-            {
-                strncpy(reply, "[오류] 해당 ID의 도서를 찾을 수 없습니다.", sizeof(reply));
-            }
-        }
-        else if (strcmp(cmd, "FIND_BOOK") == 0)
-        {
-            char *idStr = strtok(NULL, "\n");
-            int findId = atoi(idStr);
-            int found = 0;
-            for (int i = 0; i < bookCount; i++)
-            {
-                if (books[i].id == findId)
-                {
-                    snprintf(reply, sizeof(reply), "%3d | %-60.60s | %-32.32s | 평점: %.2f",
-                             books[i].id, books[i].title, books[i].author, books[i].rating);
-                    found = 1;
-                    break;
-                }
-            }
-            if (!found)
-            {
-                strncpy(reply, "[오류] 해당 ID의 도서를 찾을 수 없습니다.", sizeof(reply));
-            }
+            strncpy(reply, "[서버] 지원하지 않는 명령입니다.", sizeof(reply));
         }
 
-        printf("[서버] 처리 결과:\n%s\n", reply);
-        send(client_fd, reply, strlen(reply), 0);
+        printf("[서버] 처리 결과:\n%.100s...\n", reply);
+        
+        int replyLen = strlen(reply);
+        printf("[서버] 응답 크기: %d 바이트\n", replyLen);
+        
+        send(client_fd, reply, replyLen, 0);
     }
 
     closesocket(client_fd);

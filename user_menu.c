@@ -50,6 +50,14 @@ void userMenu(SOCKET sock)
             send(sock, buffer, strlen(buffer), 0);
             int bytes = recv(sock, buffer, BUF_SIZE - 1, 0);
             buffer[bytes] = '\0';
+            
+            if (option == 4) {
+                printf("서버 응답: %s\n", buffer);
+                printf("계속하려면 아무 키나 누르세요...\n");
+                getchar();
+                continue;
+            }
+            
             if (strncmp(buffer, "사용자가 존재합니다", 24) != 0)
             {
                 printf("[알림] 존재하지 않는 사용자입니다.\n");
@@ -103,10 +111,6 @@ void userMenu(SOCKET sock)
                 continue;
             snprintf(buffer, BUF_SIZE, "DELETE:%s:%s", id, pw);
         }
-        else if (option == 4)
-        {
-            snprintf(buffer, BUF_SIZE, "FIND:%s", id);
-        }
         else if (option == 5)
         {
             getEscapableInput(pw, sizeof(pw), "기존 비밀번호 입력", 1);
@@ -118,7 +122,7 @@ void userMenu(SOCKET sock)
             snprintf(buffer, BUF_SIZE, "MODIFY:%s:%s:%s", id, pw, pw2);
         }
 
-        if (option != 1)
+        if (option != 1 && option != 4)
         {
             send(sock, buffer, strlen(buffer), 0);
             int bytes = recv(sock, buffer, BUF_SIZE - 1, 0);

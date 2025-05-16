@@ -94,6 +94,8 @@
                 "${workspaceFolder}/bmserver.c",
                 "${workspaceFolder}/user.c",
                 "${workspaceFolder}/book.c",
+                "${workspaceFolder}/user_command.c",
+                "${workspaceFolder}/book_command.c",
                 "-o",
                 "${workspaceFolder}/bmserver",
                 "-lws2_32"
