@@ -11,19 +11,23 @@
 #pragma comment(lib, "ws2_32.lib")
 
 // 서버 설정 상수
-#define PORT 12345      // 서버 포트 번호
-#define BUF_SIZE 65536  // 통신 버퍼 크기
+#define PORT 12345     // 서버 포트 번호
+#define BUF_SIZE 65536 // 통신 버퍼 크기
 
 // 명령어 확인 헬퍼 함수
 // 클라이언트 요청이 특정 명령어와 일치하는지 정확히 확인
-int isCommand(const char* buffer, const char* cmd) {
+int isCommand(const char *buffer, const char *cmd)
+{
     size_t cmdLen = strlen(cmd);
-    return strncmp(buffer, cmd, cmdLen) == 0 && 
+    return strncmp(buffer, cmd, cmdLen) == 0 &&
            (buffer[cmdLen] == ':' || buffer[cmdLen] == '\0');
 }
 
 int main()
 {
+    // 콘솔 출력 인코딩 설정
+    SetConsoleOutputCP(CP_UTF8);
+
     // Winsock 초기화
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
@@ -35,9 +39,9 @@ int main()
     // 사용자 및 도서 데이터 로드
     loadUsersFromFile("users.txt");
     loadBooksFromFile("booklist2.txt");
-    
+
     printf("[서버] 총 %d권의 도서 데이터 로드 완료\n", bookCount);
-    
+
     // 서버 소켓 생성 및 설정
     SOCKET server_fd = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in serv_addr = {0}, cli_addr = {0};
@@ -75,9 +79,12 @@ int main()
             isCommand(buffer, "MODIFY"))
         {
             // DELETE_BOOK이 아닌 DELETE 명령만 처리
-            if (strncmp(buffer, "DELETE_BOOK", 11) == 0) {
+            if (strncmp(buffer, "DELETE_BOOK", 11) == 0)
+            {
                 handleBookCommand(buffer, reply);
-            } else {
+            }
+            else
+            {
                 handleUserCommand(buffer, reply);
             }
         }
@@ -87,8 +94,9 @@ int main()
                  isCommand(buffer, "RANK"))
         {
             handleBookCommand(buffer, reply);
-            
-            if (strncmp(buffer, "SORT", 4) == 0) {
+
+            if (strncmp(buffer, "SORT", 4) == 0)
+            {
                 printf("[서버] 정렬 명령 처리, 응답 크기: %zu 바이트\n", strlen(reply));
             }
         }
@@ -99,10 +107,10 @@ int main()
 
         // 응답 전송
         printf("[서버] 처리 결과:\n%.100s...\n", reply);
-        
+
         int replyLen = strlen(reply);
         printf("[서버] 응답 크기: %d 바이트\n", replyLen);
-        
+
         send(client_fd, reply, replyLen, 0);
     }
 

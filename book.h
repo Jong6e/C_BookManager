@@ -26,10 +26,6 @@ void loadBooksFromFile(const char *filename);
 // 현재 메모리에 로드된 모든 도서 정보를 화면에 표시
 void printAllBooks();
 
-// 타이틀 출력
-// UI 상단에 표시할 타이틀 정보 출력
-void printTitle();
-
 // 도서 검색 기능
 // 지정된 필드(제목/저자)에서 키워드를 검색하여 결과 반환
 void searchBooks(const char *field, const char *keyword, char *result, int resultSize);
