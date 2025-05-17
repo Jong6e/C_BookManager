@@ -9,6 +9,9 @@
 #include "user_menu.h"
 
 #define BUF_SIZE 65536 // 버퍼 크기를 64KB로 크게 증가
+#define TITLE_MAX_LEN 60 // 제목 최대 길이 60자
+#define AUTHOR_MAX_LEN 32 // 저자 최대 길이 32자
+#define MIN_TEXT_LEN 1 // 최소 텍스트 길이 1자
 
 void printStatusBar()
 {
@@ -145,16 +148,43 @@ void bookMenu(SOCKET sock)
 
         if (sel == 2)
         {
-            char title[50], author[50], ratingStr[10];
+            char title[TITLE_MAX_LEN + 1], author[AUTHOR_MAX_LEN + 1], ratingStr[10];
             float rating;
 
             getEscapableInput(title, sizeof(title), "도서 제목", 0);
             if (title[0] == '\0')
                 continue;
+            
+            // 도서 제목 최소 길이 체크
+            if (strlen(title) < MIN_TEXT_LEN) {
+                printf("[오류] 도서 제목은 최소 %d자 이상이어야 합니다.\n", MIN_TEXT_LEN);
+                printf("계속하려면 아무 키나 누르세요...\n");
+                getchar();
+                continue;
+            }
 
             getEscapableInput(author, sizeof(author), "도서 저자", 0);
             if (author[0] == '\0')
                 continue;
+            
+            // 저자명 최소 길이 체크
+            if (strlen(author) < MIN_TEXT_LEN) {
+                printf("[오류] 저자명은 최소 %d자 이상이어야 합니다.\n", MIN_TEXT_LEN);
+                printf("계속하려면 아무 키나 누르세요...\n");
+                getchar();
+                continue;
+            }
+
+            // 최대 길이 체크 및 조정
+            if (strlen(title) > TITLE_MAX_LEN) {
+                title[TITLE_MAX_LEN] = '\0';
+                printf("[경고] 제목이 최대 길이(%d자)를 초과하여 잘렸습니다.\n", TITLE_MAX_LEN);
+            }
+            
+            if (strlen(author) > AUTHOR_MAX_LEN) {
+                author[AUTHOR_MAX_LEN] = '\0';
+                printf("[경고] 저자명이 최대 길이(%d자)를 초과하여 잘렸습니다.\n", AUTHOR_MAX_LEN);
+            }
 
             while (1)
             {
@@ -259,9 +289,44 @@ void bookMenu(SOCKET sock)
             else
                 strcpy(field, "rating");
 
-            getEscapableInput(newValue, sizeof(newValue), "새로운 값", 0);
-            if (newValue[0] == '\0')
-                continue;
+            if (strcmp(field, "rating") == 0) {
+                float rating;
+                while (1) {
+                    getEscapableInput(newValue, sizeof(newValue), "새로운 평점 (0.0 ~ 5.0)", 0);
+                    if (newValue[0] == '\0')
+                        break;
+                    rating = atof(newValue);
+                    if (rating < 0.0 || rating > 5.0) {
+                        printf("[오류] 평점은 0.0에서 5.0 사이로 입력해야 합니다.\n");
+                        continue;
+                    }
+                    break;
+                }
+                if (newValue[0] == '\0')
+                    continue;
+            } else {
+                getEscapableInput(newValue, sizeof(newValue), "새로운 값", 0);
+                if (newValue[0] == '\0')
+                    continue;
+                
+                // 최소 길이 체크
+                if (strlen(newValue) < MIN_TEXT_LEN) {
+                    printf("[오류] %s은(는) 최소 %d자 이상이어야 합니다.\n", 
+                           strcmp(field, "title") == 0 ? "도서 제목" : "저자명", MIN_TEXT_LEN);
+                    printf("계속하려면 아무 키나 누르세요...\n");
+                    getchar();
+                    continue;
+                }
+                
+                // 최대 길이 체크 및 조정
+                if (strcmp(field, "title") == 0 && strlen(newValue) > TITLE_MAX_LEN) {
+                    newValue[TITLE_MAX_LEN] = '\0';
+                    printf("[경고] 제목이 최대 길이(%d자)를 초과하여 잘렸습니다.\n", TITLE_MAX_LEN);
+                } else if (strcmp(field, "author") == 0 && strlen(newValue) > AUTHOR_MAX_LEN) {
+                    newValue[AUTHOR_MAX_LEN] = '\0';
+                    printf("[경고] 저자명이 최대 길이(%d자)를 초과하여 잘렸습니다.\n", AUTHOR_MAX_LEN);
+                }
+            }
 
             snprintf(buffer, sizeof(buffer), "UPDATE:%d:%s:%s", modId, field, newValue);
             send(sock, buffer, strlen(buffer), 0);

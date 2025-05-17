@@ -9,6 +9,8 @@
 #include "book.h"
 
 #define BUF_SIZE 1000
+#define MIN_ID_LENGTH 4
+#define MIN_PW_LENGTH 4
 
 // 프로그램 종료 함수
 // 모든 자원을 정리하고 프로그램을 안전하게 종료
@@ -67,9 +69,21 @@ void userMenu(SOCKET sock)
         if (option < 1 || option > 5)
             continue;
 
+        // ID 길이 안내 표시
+        if (option == 2) {
+            printf("ID 길이는 최소 %d자 이상이어야 합니다.\n", MIN_ID_LENGTH);
+        }
         getEscapableInput(id, sizeof(id), "ID 입력", 0);
         if (id[0] == '\0')
             continue;
+
+        // ID 최소 길이 체크
+        if (option == 2 && strlen(id) < MIN_ID_LENGTH) {
+            printf("[오류] ID는 최소 %d자 이상이어야 합니다.\n", MIN_ID_LENGTH);
+            printf("계속하려면 아무 키나 누르세요...\n");
+            getchar();
+            continue;
+        }
 
         if ((option == 3 || option == 4 || option == 5))
         {
@@ -116,9 +130,19 @@ void userMenu(SOCKET sock)
         }
         else if (option == 2)
         {
+            printf("비밀번호 길이는 최소 %d자 이상이어야 합니다.\n", MIN_PW_LENGTH);
             getEscapableInput(pw, sizeof(pw), "비밀번호 입력", 1);
             if (pw[0] == '\0')
                 continue;
+                
+            // 비밀번호 최소 길이 체크
+            if (strlen(pw) < MIN_PW_LENGTH) {
+                printf("[오류] 비밀번호는 최소 %d자 이상이어야 합니다.\n", MIN_PW_LENGTH);
+                printf("계속하려면 아무 키나 누르세요...\n");
+                getchar();
+                continue;
+            }
+                
             getEscapableInput(pw2, sizeof(pw2), "비밀번호 확인", 1);
             if (pw2[0] == '\0')
                 continue;
@@ -143,9 +167,20 @@ void userMenu(SOCKET sock)
             getEscapableInput(pw, sizeof(pw), "기존 비밀번호 입력", 1);
             if (pw[0] == '\0')
                 continue;
+                
+            printf("새 비밀번호 길이는 최소 %d자 이상이어야 합니다.\n", MIN_PW_LENGTH);
             getEscapableInput(pw2, sizeof(pw2), "새 비밀번호 입력", 1);
             if (pw2[0] == '\0')
                 continue;
+                
+            // 새 비밀번호 최소 길이 체크
+            if (strlen(pw2) < MIN_PW_LENGTH) {
+                printf("[오류] 비밀번호는 최소 %d자 이상이어야 합니다.\n", MIN_PW_LENGTH);
+                printf("계속하려면 아무 키나 누르세요...\n");
+                getchar();
+                continue;
+            }
+                
             snprintf(buffer, BUF_SIZE, "MODIFY:%s:%s:%s", id, pw, pw2);
         }
 
