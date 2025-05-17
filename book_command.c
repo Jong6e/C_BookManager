@@ -74,6 +74,7 @@ void handleBookCommand(const char *request, char *reply)
         int delId = atoi(idStr);
         int found = 0;
         int delIndex = -1;
+        char bookTitle[TITLE_MAX_LEN + 1] = {0}; // 삭제할 도서 제목 저장
 
         // 디버깅 메시지 추가
         printf("[서버] 삭제 요청 ID: %d (현재 도서 수: %d)\n", delId, bookCount);
@@ -85,6 +86,7 @@ void handleBookCommand(const char *request, char *reply)
             {
                 delIndex = i;
                 found = 1;
+                strncpy(bookTitle, books[i]->title, TITLE_MAX_LEN);
                 printf("[서버] 삭제할 도서 찾음: [%d] %s\n", delId, books[i]->title);
                 break;
             }
@@ -126,7 +128,7 @@ void handleBookCommand(const char *request, char *reply)
                     }
                 }
                 fclose(fp);
-                strncpy(reply, "도서 삭제 완료.", REPLY_SIZE);
+                snprintf(reply, REPLY_SIZE, "[성공] 도서 ID: %d, 제목: \"%s\" 삭제 완료.", delId, bookTitle);
                 printf("[서버] 도서 파일 저장 완료\n");
             }
         }

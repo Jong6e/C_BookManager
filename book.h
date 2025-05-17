@@ -3,6 +3,8 @@
 
 // 최대 도서 수 제한 상수
 #define MAX_BOOKS 700 // 최대 700권까지 도서 저장 가능
+#define TITLE_MAX_LEN 60 // 제목 최대 길이 60자
+#define AUTHOR_MAX_LEN 32 // 저자 최대 길이 32자
 
 /**
  * 도서 정보를 저장하는 구조체
@@ -10,8 +12,8 @@
 typedef struct
 {
     int id;          // 도서 순번
-    char title[50];  // 도서 제목
-    char author[50]; // 도서 저자
+    char title[TITLE_MAX_LEN + 1];  // 도서 제목
+    char author[AUTHOR_MAX_LEN + 1]; // 도서 저자
     float rating;    // 도서 평점
 } BOOK;
 
@@ -41,5 +43,11 @@ void freeAllBooks();
 // 새 도서 생성 함수
 // 입력받은 정보로 새 도서 구조체를 동적 할당하여 생성
 BOOK* createNewBook(int id, const char* title, const char* author, float rating);
+
+// 도서 정보 저장 함수
+void saveBooksToFile(const char *filename);
+
+// 문자열 소문자 변환 유틸리티 함수
+void toLowerCase(const char *src, char *dest);
 
 #endif

@@ -4,13 +4,12 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <conio.h>
+#include "book.h"
 #include "book_menu.h"
 #include "common_input.h"
 #include "user_menu.h"
 
 #define BUF_SIZE 65536 // 버퍼 크기를 64KB로 크게 증가
-#define TITLE_MAX_LEN 60 // 제목 최대 길이 60자
-#define AUTHOR_MAX_LEN 32 // 저자 최대 길이 32자
 #define MIN_TEXT_LEN 1 // 최소 텍스트 길이 1자
 
 void printStatusBar()
@@ -227,9 +226,44 @@ void bookMenu(SOCKET sock)
                 getchar();
                 continue;
             }
-            snprintf(buffer, sizeof(buffer), "DELETE_BOOK:%d", delId);
+            
+            // 도서 정보 확인을 위한 FIND_BOOK 명령 전송
+            snprintf(buffer, sizeof(buffer), "FIND_BOOK:%d", delId);
             send(sock, buffer, strlen(buffer), 0);
             int bytes = recv(sock, buffer, BUF_SIZE - 1, 0);
+            buffer[bytes] = '\0';
+            
+            // 도서를 찾지 못한 경우
+            if (strstr(buffer, "[오류]") != NULL || strstr(buffer, "찾을 수 없습니다") != NULL) {
+                clearScreen();
+                printf("%s\n", buffer);
+                printf("(Enter를 누르면 메뉴로 돌아갑니다...)\n");
+                getchar();
+                continue;
+            }
+            
+            // 도서 정보 출력 및 삭제 확인
+            clearScreen();
+            printf("[삭제할 도서 정보]\n");
+            printf(" ID |  제목                                                        | 저자                             | 평점\n");
+            printf("──────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n");
+            printf("%s\n\n", buffer);
+            
+            // 삭제 확인
+            char confirm[10];
+            getEscapableInput(confirm, sizeof(confirm), "정말 이 도서를 삭제하시겠습니까? (Y/N)", 0);
+            if (confirm[0] != 'Y' && confirm[0] != 'y') {
+                clearScreen();
+                printf("[알림] 도서 삭제가 취소되었습니다.\n");
+                printf("(Enter를 누르면 메뉴로 돌아갑니다...)\n");
+                getchar();
+                continue;
+            }
+            
+            // 삭제 명령 전송
+            snprintf(buffer, sizeof(buffer), "DELETE_BOOK:%d", delId);
+            send(sock, buffer, strlen(buffer), 0);
+            bytes = recv(sock, buffer, BUF_SIZE - 1, 0);
             buffer[bytes] = '\0';
             clearScreen();
             printf("%s\n", buffer);
