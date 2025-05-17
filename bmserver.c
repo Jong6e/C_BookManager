@@ -23,50 +23,23 @@ int isCommand(const char *buffer, const char *cmd)
            (buffer[cmdLen] == ':' || buffer[cmdLen] == '\0');
 }
 
-int main()
-{
-    // 콘솔 출력 인코딩 설정
-    SetConsoleOutputCP(CP_UTF8);
-
-    // Winsock 초기화
-    WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-    {
-        printf("WSAStartup 실패: %d\n", WSAGetLastError());
-        return 1;
-    }
-
-    // 사용자 및 도서 데이터 로드
-    loadUsersFromFile("users.txt");
-    loadBooksFromFile("booklist2.txt");
-
-    printf("[서버] 총 %d권의 도서 데이터 로드 완료\n", bookCount);
-
-    // 서버 소켓 생성 및 설정
-    SOCKET server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in serv_addr = {0}, cli_addr = {0};
-    int cli_len = sizeof(cli_addr);
+// 클라이언트 요청 처리 함수
+// 클라이언트 연결과 통신을 처리하는 별도 함수
+void handleClient(SOCKET client_fd, struct sockaddr_in *cli_addr) {
+    char clientIP[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(cli_addr->sin_addr), clientIP, INET_ADDRSTRLEN);
+    
+    printf("[서버] 클라이언트 연결됨: %s:%d\n", clientIP, ntohs(cli_addr->sin_port));
+    
     char buffer[BUF_SIZE];
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(PORT);
-
-    // 서버 소켓 바인딩 및 리스닝
-    bind(server_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-    listen(server_fd, 5);
-    printf("[서버] 클라이언트 접속 대기 중...\n");
-
-    // 클라이언트 연결 수락
-    SOCKET client_fd = accept(server_fd, (struct sockaddr *)&cli_addr, &cli_len);
-    printf("[서버] 클라이언트 연결됨\n");
-
+    
     // 클라이언트 요청 처리 루프
-    while (1)
-    {
+    while (1) {
         int bytes = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-        if (bytes <= 0)
+        if (bytes <= 0) {
+            printf("[서버] 클라이언트 %s:%d 연결 해제됨\n", clientIP, ntohs(cli_addr->sin_port));
             break;
+        }
         buffer[bytes] = '\0';
 
         printf("[서버] 수신된 명령: %s\n", buffer);
@@ -113,9 +86,60 @@ int main()
 
         send(client_fd, reply, replyLen, 0);
     }
-
-    // 자원 정리 및 종료
+    
+    // 클라이언트 소켓 정리
     closesocket(client_fd);
+}
+
+int main()
+{
+    // 콘솔 출력 인코딩 설정
+    SetConsoleOutputCP(CP_UTF8);
+
+    // Winsock 초기화
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+    {
+        printf("WSAStartup 실패: %d\n", WSAGetLastError());
+        return 1;
+    }
+
+    // 사용자 및 도서 데이터 로드
+    loadUsersFromFile("users.txt");
+    loadBooksFromFile("booklist2.txt");
+
+    printf("[서버] 총 %d권의 도서 데이터 로드 완료\n", bookCount);
+
+    // 서버 소켓 생성 및 설정
+    SOCKET server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in serv_addr = {0};
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(PORT);
+
+    // 서버 소켓 바인딩 및 리스닝
+    bind(server_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+    listen(server_fd, 5);
+    printf("[서버] 클라이언트 접속 대기 중... (포트: %d)\n", PORT);
+
+    // 무한 루프로 클라이언트 연결 수락
+    while (1) {
+        struct sockaddr_in cli_addr = {0};
+        int cli_len = sizeof(cli_addr);
+        
+        // 클라이언트 연결 수락
+        SOCKET client_fd = accept(server_fd, (struct sockaddr *)&cli_addr, &cli_len);
+        if (client_fd == INVALID_SOCKET) {
+            printf("[서버] 클라이언트 연결 수락 실패: %d\n", WSAGetLastError());
+            continue;
+        }
+        
+        // 클라이언트 요청 처리
+        handleClient(client_fd, &cli_addr);
+    }
+
+    // 자원 정리 및 종료 (실제로는 이 코드에 도달하지 않음)
     closesocket(server_fd);
     WSACleanup();
     return 0;
